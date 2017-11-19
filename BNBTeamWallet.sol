@@ -19,7 +19,7 @@ contract BNBTeamWallet is Ownable{
   
 
   modifier withdrawalTime() { 
-    require(now >= startTime + FREEZE_TIME); 
+    require(now >= startTime.add(FREEZE_TIME)); 
     _; 
   }
   
@@ -30,7 +30,7 @@ contract BNBTeamWallet is Ownable{
     require(_bnbToken != 0x0);
 
     startTime = now;
-    bnbToken = BNBToken(_qcToken);
+    bnbToken = BNBToken(_bnbToken);
     owner = msg.sender;
 
   }
