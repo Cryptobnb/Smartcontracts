@@ -13,7 +13,7 @@ contract BNBToken is StandardToken, Ownable {
     public
   {
     // 1,000,000,000 total supply of CBnB tokens
-    totalSupply = 1000000000 * 10**(decimals);                     
+    totalSupply = 1000000000 * 10**10;                     
 												 
 	  balances[msg.sender] = totalSupply;
     Transfer(0, owner, totalSupply);
