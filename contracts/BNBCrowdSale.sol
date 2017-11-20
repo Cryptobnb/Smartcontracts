@@ -267,9 +267,9 @@ contract BNBCrowdSale is Ownable{
 
   /// @notice used to move tokens from the later tiers into the earlier tiers
   /// contract must be paused to do the move
-  /// @param tier from later tier to subtract the tokens from
-  /// @param tier to add the tokens to
-  /// @param how many tokens to take
+  /// param tier from later tier to subtract the tokens from
+  /// param tier to add the tokens to
+  /// param how many tokens to take
   function moveTokensForSale(uint8 _tierFrom, uint8 _tierTo, uint256 _tokens) 
     public
     onlyOwner

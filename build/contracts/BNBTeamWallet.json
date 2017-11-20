@@ -1,0 +1,179 @@
+{
+  "contract_name": "BNBTeamWallet",
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "FREEZE_TIME",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "bnbToken",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "totalWithdrawn",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "startTime",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "transferTeamTokens",
+      "outputs": [
+        {
+          "name": "success",
+          "type": "bool"
+        }
+      ],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "_teamMember",
+          "type": "address"
+        },
+        {
+          "name": "_tokenAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "addTeamMember",
+      "outputs": [
+        {
+          "name": "success",
+          "type": "bool"
+        }
+      ],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "withdrawalAddress",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "_bnbToken",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "name": "_teamMember",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "name": "_tokenAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "LogWithdrawal",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    }
+  ],
+  "unlinked_binary": "0x6060604052341561000f57600080fd5b604051602080610549833981016040528080519150505b5b60008054600160a060020a03191633600160a060020a03161790555b600160a060020a038116151561005857600080fd5b4260035560028054600160a060020a03808416600160a060020a0319928316179092556000805433909316929091169190911790555b505b6104aa8061009f6000396000f300606060405236156100965763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416631a038873811461009b5780632b17b6a9146100c05780634b319713146100ef57806378e97925146101145780638528b528146101395780638d13192b146101605780638da5cb5b14610196578063f2bcd022146101c5578063f2fde38b146101f4575b600080fd5b34156100a657600080fd5b6100ae610215565b60405190815260200160405180910390f35b34156100cb57600080fd5b6100d361021d565b604051600160a060020a03909116815260200160405180910390f35b34156100fa57600080fd5b6100ae61022c565b60405190815260200160405180910390f35b341561011f57600080fd5b6100ae610232565b60405190815260200160405180910390f35b341561014457600080fd5b61014c610238565b604051901515815260200160405180910390f35b341561016b57600080fd5b61014c600160a060020a036004351660243561036b565b604051901515815260200160405180910390f35b34156101a157600080fd5b6100d36103ad565b604051600160a060020a03909116815260200160405180910390f35b34156101d057600080fd5b6100d36103bc565b604051600160a060020a03909116815260200160405180910390f35b34156101ff57600080fd5b610213600160a060020a03600435166103cb565b005b6301e1338081565b600254600160a060020a031681565b60045481565b60035481565b6000806102546301e1338060035461046490919063ffffffff16565b42101561026057600080fd5b50600160a060020a0333818116600090815260056020526040808220805490839055600254909416926323b872dd92309286919051602001526040517c010000000000000000000000000000000000000000000000000000000063ffffffff8616028152600160a060020a0393841660048201529190921660248201526044810191909152606401602060405180830381600087803b151561030157600080fd5b6102c65a03f1151561031257600080fd5b50505060405180519050507fb4214c8c54fc7442f36d3682f59aebaf09358a4431835b30efb29d52cf9e1e913382604051600160a060020a03909216825260208201526040908101905180910390a1600191505b5b5090565b6000805433600160a060020a0390811691161461038757600080fd5b50600160a060020a038216600090815260056020526040902081905560015b5b92915050565b600054600160a060020a031681565b600154600160a060020a031681565b60005433600160a060020a039081169116146103e657600080fd5b600160a060020a03811615156103fb57600080fd5b600054600160a060020a0380831691167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e060405160405180910390a36000805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a0383161790555b5b50565b60008282018381101561047357fe5b8091505b50929150505600a165627a7a7230582082f98ef8b550782fecee54b9df08455913460da3720e20fb90592ef81ee27eb30029",
+  "networks": {},
+  "schema_version": "0.0.5",
+  "updated_at": 1511215384324
+}
