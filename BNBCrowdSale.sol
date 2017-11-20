@@ -16,7 +16,7 @@ contract BNBCrowdSale is Ownable{
   uint256 public minLimit;
   address public owner;
   uint256 public cap;
-  uint8 public tier;
+  uint8 private tier;
   bool public paused;
   bool private lockTier;
 
