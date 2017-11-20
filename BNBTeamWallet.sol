@@ -44,7 +44,7 @@ contract BNBTeamWallet is Ownable{
     return true;
   }
 
-  function transferTeamTokens(uint256 _tokenAmount)
+  function transferTeamTokens()
     public
     withdrawalTime
     returns (bool success)
