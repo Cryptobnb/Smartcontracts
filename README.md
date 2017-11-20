@@ -1,5 +1,5 @@
 # smartcontract
-solidity smart contract for ICO
+Solidity smart contracts for ICO
 
 The contracts are ready for auditing if you have any questions contact me directly
 christopher.l.barber@gmail.com
@@ -10,6 +10,5 @@ BNBCrowdSale contract has the same functionality as the standard version plus wh
 
 BNBTeamWallet will freeze tokens in the wallet under the team members address for the determined amount of time
 
-The multisig wallet has not yet been decided on in terms of which wallet we will use.
 
 

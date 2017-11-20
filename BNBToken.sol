@@ -6,13 +6,13 @@ import './Ownable.sol';
 contract BNBToken is StandardToken, Ownable {
 
   string public constant name = "CryptoBNB";
-  string public constant symbol = "BNB";
+  string public constant symbol = "CBnB";
   uint8 public constant decimals = 10;
   
   function BNBToken()
     public
   {
-    // 1,000,000,000 total supply of BNB tokens
+    // 1,000,000,000 total supply of CBnB tokens
     totalSupply = 1000000000 * 10**(decimals);                     
 												 
 	  balances[msg.sender] = totalSupply;
