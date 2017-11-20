@@ -1,0 +1,23 @@
+{
+  "name": "cryptobnb",
+  "version": "1.0.0",
+  "description": "Audit Release",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cryptobnb/Smartcontracts.git"
+  },
+  "author": "Chris Barber",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Cryptobnb/Smartcontracts/issues"
+  },
+  "homepage": "https://github.com/Cryptobnb/Smartcontracts#readme",
+  "dependencies": {
+    "truffle-contract": "^3.0.1",
+    "web3": "^1.0.0-beta.26"
+  }
+}
