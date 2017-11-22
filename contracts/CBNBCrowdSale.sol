@@ -1,10 +1,10 @@
 pragma solidity ^0.4.13;
 
-import './BNBToken.sol';
+import './CBNBToken.sol';
 import './Ownable.sol';
 import './SafeMath.sol';
 
-contract BNBCrowdSale is Ownable{
+contract CBNBCrowdSale is Ownable{
   using SafeMath for uint256;
 
   uint256 public icoStartTime;
@@ -17,7 +17,7 @@ contract BNBCrowdSale is Ownable{
   address public owner;
   uint256 public cap;
   uint8 private tier;
-  bool public paused;
+  bool private paused;
   bool private lockTier;
 
   enum Status {
@@ -33,7 +33,7 @@ contract BNBCrowdSale is Ownable{
   mapping(address => WhitelistedInvestors) investors;
 
   //The CryptoBnB token contract
-  BNBToken public bnbToken; 
+  CBNBToken public bnbToken; 
 
   /// @dev Sale tiers for Institution-ICO, public Pre-ICO, and ICO
   /// @dev Sets the time of start and finish, it will be time of pushing
@@ -48,7 +48,7 @@ contract BNBCrowdSale is Ownable{
    
   mapping(uint8 => SaleTier) saleTier;
 
-  event TokensReserved(address _buyer, uint256 _amount);
+  event LogTokensReserved(address _buyer, uint256 _amount);
   event LogWithdrawal(address _investor, uint256 _amount); 
  
   modifier isValidPayload() {
@@ -103,7 +103,7 @@ contract BNBCrowdSale is Ownable{
   /// @dev confirm price thresholds and amounts
   ///  multiSigWallet for holding ether
   ///  bnbToken token address pushed to mainnet first
-  function BNBCrowdSale(address _multiSigWallet, address _bnbToken, address _teamWallet) 
+  function CBNBCrowdSale(address _multiSigWallet, address _bnbToken, address _teamWallet) 
     public 
   {
     require(_multiSigWallet != 0x0);
@@ -113,52 +113,52 @@ contract BNBCrowdSale is Ownable{
     teamWallet = _teamWallet;
     icoStartTime = now; //pick a block number to start on
     icoEndTime = now + 42 days; //pick a block number to end on
-    bnbToken = BNBToken(_bnbToken);    
+    bnbToken = CBNBToken(_bnbToken);    
     decimals = 10;
     minLimit = 15000 ether;
     lockTier = false;
     owner = msg.sender;
     cap = 165000 ether;
 
-    /// @notice Pre-ICO
+    /// @notice Tier 0- ICO
     saleTier[0].startTime = now;
     saleTier[0].endTime = now + 7 days;
-    saleTier[0].tokensToBeSold = 10;
+    saleTier[0].tokensToBeSold = 100000000*10**10;
     saleTier[0].price = 23333 * 10**10; //$0.07
     saleTier[0].tokensSold = 0;
     
     /// @notice Tier 1 - ICO
     saleTier[1].startTime = now + 8 days; //unused
     saleTier[1].endTime = now + 14 days;
-    saleTier[1].tokensToBeSold = 10;
+    saleTier[1].tokensToBeSold = 100000000*10**10;
     saleTier[1].price = 25000 * 10**10; // 0.075
     saleTier[1].tokensSold = 0;
 
     /// @notice Tier 2 - ICO
     saleTier[2].startTime = now + 15 days; //unused
     saleTier[2].endTime = now + 21 days;
-    saleTier[2].tokensToBeSold = 10;
+    saleTier[2].tokensToBeSold = 100000000*10**10;
     saleTier[2].price = 26666 * 10**10; //0.08
     saleTier[2].tokensSold = 0;
     
     /// @notice Tier 3 - ICO 
     saleTier[3].startTime = now + 21 days; //unused
     saleTier[3].endTime = now + 28 days;
-    saleTier[3].tokensToBeSold = 10;
+    saleTier[3].tokensToBeSold = 100000000*10**10;
     saleTier[3].price = 28333 * 10**10; // 0.085
     saleTier[3].tokensSold = 0;
     
     /// @notice Tier 4 - ICO
     saleTier[4].startTime = now + 29 days; //unused
     saleTier[4].endTime = now + 35 days;
-    saleTier[4].tokensToBeSold = 10;
+    saleTier[4].tokensToBeSold = 100000000*10**10;
     saleTier[4].price = 30000 * 10**10; // 0.09
     saleTier[4].tokensSold = 0;
 
     /// @notice Tier 5 - ICO
     saleTier[5].startTime = now + 36 days; //unused
     saleTier[5].endTime = now + 42 days;
-    saleTier[5].tokensToBeSold = 10;
+    saleTier[5].tokensToBeSold = 100000000*10**10;
     saleTier[5].price = 31666 * 10**10; //0.095
     saleTier[5].tokensSold = 0;
  }
@@ -223,7 +223,7 @@ contract BNBCrowdSale is Ownable{
     investors[msg.sender].qtyTokens += qtyOfTokensRequested;
     investors[msg.sender].contrAmount += amount; //will I get my value to stay and the eth to go?
     
-    TokensReserved(msg.sender, qtyOfTokensRequested);
+    LogTokensReserved(msg.sender, qtyOfTokensRequested);
     lockTier = false;
     return tier;
   }

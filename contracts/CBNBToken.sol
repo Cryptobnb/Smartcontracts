@@ -3,13 +3,13 @@ pragma solidity ^0.4.13;
 import './StandardToken.sol';
 import './Ownable.sol';
 
-contract BNBToken is StandardToken, Ownable {
+contract CBNBToken is StandardToken, Ownable {
 
   string public constant name = "CryptoBNB";
   string public constant symbol = "CBnB";
   uint8 public constant decimals = 10;
   
-  function BNBToken()
+  function CBNBToken()
     public
   {
     // 1,000,000,000 total supply of CBnB tokens

@@ -1,9 +1,9 @@
 pragma solidity ^0.4.13;
-import './BNBToken.sol';
+import './CBNBToken.sol';
 import './Ownable.sol';
 import './SafeMath.sol';
 
-contract BNBTeamWallet is Ownable{
+contract CBNBTeamWallet is Ownable{
   using SafeMath for uint256;
 
   uint256 constant public FREEZE_TIME = 365 days;
@@ -24,7 +24,7 @@ contract BNBTeamWallet is Ownable{
   }
   
 
-  function BNBTeamWallet(address _bnbToken)
+  function CBNBTeamWallet(address _bnbToken)
     public
   {  
     require(_bnbToken != 0x0);
