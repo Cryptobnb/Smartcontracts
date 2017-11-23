@@ -1,5 +1,5 @@
 pragma solidity ^0.4.13;
-
+//version 0.1.1
 import './CBNBToken.sol';
 import './Ownable.sol';
 import './SafeMath.sol';
@@ -120,46 +120,46 @@ contract CBNBCrowdSale is Ownable{
     owner = msg.sender;
     cap = 165000 ether;
 
-    /// @notice Tier 0- ICO
+   /// @notice Tier 0
     saleTier[0].startTime = now;
     saleTier[0].endTime = now + 7 days;
     saleTier[0].tokensToBeSold = 100000000*10**10;
-    saleTier[0].price = 23333 * 10**10; //$0.07
+    saleTier[0].price = 256410 * 10**9; // wei per tken
     saleTier[0].tokensSold = 0;
     
     /// @notice Tier 1 - ICO
-    saleTier[1].startTime = now + 8 days; //unused
+    saleTier[1].startTime = now + 8 days;
     saleTier[1].endTime = now + 14 days;
     saleTier[1].tokensToBeSold = 100000000*10**10;
-    saleTier[1].price = 25000 * 10**10; // 0.075
+    saleTier[1].price = 266666 * 10**9; // wei per token
     saleTier[1].tokensSold = 0;
 
     /// @notice Tier 2 - ICO
-    saleTier[2].startTime = now + 15 days; //unused
+    saleTier[2].startTime = now + 15 days; 
     saleTier[2].endTime = now + 21 days;
     saleTier[2].tokensToBeSold = 100000000*10**10;
-    saleTier[2].price = 26666 * 10**10; //0.08
+    saleTier[2].price = 277777 * 10**9; // wei per token
     saleTier[2].tokensSold = 0;
     
     /// @notice Tier 3 - ICO 
-    saleTier[3].startTime = now + 21 days; //unused
+    saleTier[3].startTime = now + 21 days;
     saleTier[3].endTime = now + 28 days;
     saleTier[3].tokensToBeSold = 100000000*10**10;
-    saleTier[3].price = 28333 * 10**10; // 0.085
+    saleTier[3].price = 289855 * 10**9; // wei per token
     saleTier[3].tokensSold = 0;
     
     /// @notice Tier 4 - ICO
-    saleTier[4].startTime = now + 29 days; //unused
+    saleTier[4].startTime = now + 29 days;
     saleTier[4].endTime = now + 35 days;
     saleTier[4].tokensToBeSold = 100000000*10**10;
-    saleTier[4].price = 30000 * 10**10; // 0.09
+    saleTier[4].price = 303030 * 10**9; // wei per token
     saleTier[4].tokensSold = 0;
 
     /// @notice Tier 5 - ICO
-    saleTier[5].startTime = now + 36 days; //unused
+    saleTier[5].startTime = now + 36 days; 
     saleTier[5].endTime = now + 42 days;
     saleTier[5].tokensToBeSold = 100000000*10**10;
-    saleTier[5].price = 31666 * 10**10; //0.095
+    saleTier[5].price = 317460 * 10**9; // wei per token
     saleTier[5].tokensSold = 0;
  }
 
@@ -189,34 +189,31 @@ contract CBNBCrowdSale is Ownable{
     uint256 tierRemainingTokens;
     uint256 remainingWei;
     
-    qtyOfTokensRequested = (msg.value).div(saleTier[tier].price);
+    qtyOfTokensRequested = ((msg.value).div(saleTier[tier].price)).mul(10**10);
     
     if ((qtyOfTokensRequested.add(saleTier[tier].tokensSold)) >= (saleTier[tier].tokensToBeSold)){
       tierRemainingTokens = saleTier[tier].tokensToBeSold.sub(saleTier[tier].tokensSold);
-      uint256 totalSold = saleTier[tier].tokensSold.add(tierRemainingTokens);
 
+      /// if someone buys the very last tokens for sale with an amount that results in a remainder then
+      /// there will be a manual return once the sale is complete
       if(qtyOfTokensRequested != tierRemainingTokens){
-        remainingWei = msg.value.sub(tierRemainingTokens.mul(saleTier[tier].price));
+        remainingWei = msg.value.sub((tierRemainingTokens.mul(saleTier[tier].price)).div(10**10)); 
       }
 
       qtyOfTokensRequested = tierRemainingTokens;
-      assert(totalSold == saleTier[tier].tokensToBeSold);
       tier++; //Will allow to roll from one tier to the next.
 
       if (tier <= 5){
-        uint256 buyTokensRemainingWei = remainingWei.div(saleTier[tier].price);
+        uint256 buyTokensRemainingWei = (remainingWei.div(saleTier[tier].price)).mul(10**10);
         qtyOfTokensRequested += buyTokensRemainingWei;
-        
-      } else {
-        qtyOfTokensRequested = tierRemainingTokens; 
-      }
+      } 
     }
 
     uint256 amount = msg.value;
     multiSigWallet.transfer(msg.value);
 
     weiRaised += amount;
-    
+  
     saleTier[tier].tokensSold += qtyOfTokensRequested;
 
     investors[msg.sender].whitelistStatus = Status.New;
