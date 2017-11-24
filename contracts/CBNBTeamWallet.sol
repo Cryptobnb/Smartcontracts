@@ -9,7 +9,7 @@ contract CBNBTeamWallet is Ownable{
   uint256 constant public FREEZE_TIME = 365 days;
   
   address public withdrawalAddress;
-  BNBToken public bnbToken;
+  CBNBToken public bnbToken;
   uint256 public startTime;
   uint256 public totalWithdrawn;
 
@@ -30,7 +30,7 @@ contract CBNBTeamWallet is Ownable{
     require(_bnbToken != 0x0);
 
     startTime = now;
-    bnbToken = BNBToken(_bnbToken);
+    bnbToken = CBNBToken(_bnbToken);
     owner = msg.sender;
 
   }

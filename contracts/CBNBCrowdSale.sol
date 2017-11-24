@@ -7,12 +7,16 @@ import './SafeMath.sol';
 contract CBNBCrowdSale is Ownable{
   using SafeMath for uint256;
 
+  uint256 constant internal MIN_CONTRIBUTION = 0.5 ether;
+  uint256 constant internal TOKEN_DECIMALS = 10**10;
+  uint8 constant internal TIER_COUNT = 6;
+
+  address public multiSigWallet;
   uint256 public icoStartTime;
   uint256 public icoEndTime;
-  address public multiSigWallet;
   address public teamWallet;
-  uint256 public decimals;
   uint256 public weiRaised;
+  uint256 public decimals;
   uint256 public minLimit;
   address public owner;
   uint256 public cap;
@@ -38,9 +42,7 @@ contract CBNBCrowdSale is Ownable{
   /// @dev Sale tiers for Institution-ICO, public Pre-ICO, and ICO
   /// @dev Sets the time of start and finish, it will be time of pushing
   /// @dev to the mainnet plus days/hours etc.
-  struct SaleTier { 
-    uint256 startTime;      
-    uint256 endTime;
+  struct SaleTier {      
     uint256 tokensToBeSold;  //amount of tokens to be sold in this SaleTier
     uint256 price;           //amount of tokens per wei
     uint256 tokensSold;      //amount of tokens sold in each SaleTier     
@@ -56,42 +58,8 @@ contract CBNBCrowdSale is Ownable{
     _;
   }
 
-  modifier validPurchase() { 
-    require(now >= icoStartTime && now <= icoEndTime);
-    require(weiRaised.add(msg.value) <= cap);
-    require(msg.value >= 5*10**17);
-    _; 
-  }
-  
-  modifier checkTierEndTime() {
-    require(!lockTier);
-    if(saleTier[tier].endTime <= now){
-        tier++;
-    }
-    _;
-  }
-  
-  modifier checkTierIncrement(){
-    uint256 qtns = (msg.value).div(saleTier[tier].price);
-    if ((qtns.add(saleTier[tier].tokensSold)) >= (saleTier[tier].tokensToBeSold)){
-        lockTier = true;
-    }
-    _;    
-  }
-
-  modifier refundOnly() {
-    require(weiRaised < minLimit || investors[msg.sender].whitelistStatus == Status.Denied);
-    _;
-  }
-
   modifier icoHasEnded() {
-    require(weiRaised >= cap);
-    require(now > icoEndTime);
-    _;
-  }
-
-  modifier onTheWhitelist() {
-    require(investors[msg.sender].whitelistStatus == Status.Approved);
+    require(weiRaised >= cap || now > icoEndTime || calculateUnsoldICOTokens() == 0);
     _;
   }
 
@@ -107,12 +75,14 @@ contract CBNBCrowdSale is Ownable{
     public 
   {
     require(_multiSigWallet != 0x0);
-    require(_bnbToken != 0x0);     
+    require(_bnbToken != 0x0);
+    require(_teamWallet != 0x0);     
 
     multiSigWallet = _multiSigWallet;
-    teamWallet = _teamWallet;
     icoStartTime = now; //pick a block number to start on
-    icoEndTime = now + 42 days; //pick a block number to end on
+    icoEndTime = now + 60 days; //pick a block number to end on
+    teamWallet = _teamWallet;
+    weiRaised = 0;
     bnbToken = CBNBToken(_bnbToken);    
     decimals = 10;
     minLimit = 15000 ether;
@@ -120,47 +90,11 @@ contract CBNBCrowdSale is Ownable{
     owner = msg.sender;
     cap = 165000 ether;
 
-   /// @notice Tier 0
-    saleTier[0].startTime = now;
-    saleTier[0].endTime = now + 7 days;
-    saleTier[0].tokensToBeSold = 100000000*10**10;
-    saleTier[0].price = 256410 * 10**9; // wei per tken
-    saleTier[0].tokensSold = 0;
-    
-    /// @notice Tier 1 - ICO
-    saleTier[1].startTime = now + 8 days;
-    saleTier[1].endTime = now + 14 days;
-    saleTier[1].tokensToBeSold = 100000000*10**10;
-    saleTier[1].price = 266666 * 10**9; // wei per token
-    saleTier[1].tokensSold = 0;
-
-    /// @notice Tier 2 - ICO
-    saleTier[2].startTime = now + 15 days; 
-    saleTier[2].endTime = now + 21 days;
-    saleTier[2].tokensToBeSold = 100000000*10**10;
-    saleTier[2].price = 277777 * 10**9; // wei per token
-    saleTier[2].tokensSold = 0;
-    
-    /// @notice Tier 3 - ICO 
-    saleTier[3].startTime = now + 21 days;
-    saleTier[3].endTime = now + 28 days;
-    saleTier[3].tokensToBeSold = 100000000*10**10;
-    saleTier[3].price = 289855 * 10**9; // wei per token
-    saleTier[3].tokensSold = 0;
-    
-    /// @notice Tier 4 - ICO
-    saleTier[4].startTime = now + 29 days;
-    saleTier[4].endTime = now + 35 days;
-    saleTier[4].tokensToBeSold = 100000000*10**10;
-    saleTier[4].price = 303030 * 10**9; // wei per token
-    saleTier[4].tokensSold = 0;
-
-    /// @notice Tier 5 - ICO
-    saleTier[5].startTime = now + 36 days; 
-    saleTier[5].endTime = now + 42 days;
-    saleTier[5].tokensToBeSold = 100000000*10**10;
-    saleTier[5].price = 317460 * 10**9; // wei per token
-    saleTier[5].tokensSold = 0;
+   for(uint8 i=0; i<TIER_COUNT; i++){ 
+    saleTier[i].tokensToBeSold = 100000000*TOKEN_DECIMALS;
+    saleTier[i].price = (3900 - 150*i); //tokens per eth
+    saleTier[i].tokensSold = 0;
+   }
  }
 
   /// @dev Fallback function.
@@ -177,19 +111,20 @@ contract CBNBCrowdSale is Ownable{
   function buyTokens()
     external
     payable
-    validPurchase
+    icoHasEnded
     contractPaused
     isValidPayload
-    checkTierEndTime
-    checkTierIncrement
     
     returns (uint8)
   {
+    require(investors[msg.sender].whitelistStatus != Status.Denied);
+    require(msg.value >= MIN_CONTRIBUTION);
+
     uint256 qtyOfTokensRequested;
     uint256 tierRemainingTokens;
     uint256 remainingWei;
     
-    qtyOfTokensRequested = ((msg.value).div(saleTier[tier].price)).mul(10**10);
+    qtyOfTokensRequested = ((msg.value.mul(saleTier[tier].price)).div(10**18)).mul(TOKEN_DECIMALS);
     
     if ((qtyOfTokensRequested.add(saleTier[tier].tokensSold)) >= (saleTier[tier].tokensToBeSold)){
       tierRemainingTokens = saleTier[tier].tokensToBeSold.sub(saleTier[tier].tokensSold);
@@ -197,31 +132,38 @@ contract CBNBCrowdSale is Ownable{
       /// if someone buys the very last tokens for sale with an amount that results in a remainder then
       /// there will be a manual return once the sale is complete
       if(qtyOfTokensRequested != tierRemainingTokens){
-        remainingWei = msg.value.sub((tierRemainingTokens.mul(saleTier[tier].price)).div(10**10)); 
+        remainingWei = msg.value.sub(((tierRemainingTokens.div(saleTier[tier].price)).mul(10**18)).div(TOKEN_DECIMALS)); 
       }
 
       qtyOfTokensRequested = tierRemainingTokens;
       tier++; //Will allow to roll from one tier to the next.
 
       if (tier <= 5){
-        uint256 buyTokensRemainingWei = (remainingWei.div(saleTier[tier].price)).mul(10**10);
+        uint256 buyTokensRemainingWei = ((remainingWei.mul(saleTier[tier].price)).div(10**18)).mul(TOKEN_DECIMALS);
         qtyOfTokensRequested += buyTokensRemainingWei;
       } 
     }
 
     uint256 amount = msg.value;
-    multiSigWallet.transfer(msg.value);
-
     weiRaised += amount;
+
+    if(weiRaised > cap){
+      cap.sub(weiRaised);
+      msg.sender.transfer(weiRaised.sub(cap));
+    }
+
+    multiSigWallet.transfer(msg.value);
   
     saleTier[tier].tokensSold += qtyOfTokensRequested;
 
-    investors[msg.sender].whitelistStatus = Status.New;
+    if(investors[msg.sender].whitelistStatus != Status.Approved){
+      investors[msg.sender].whitelistStatus = Status.New;
+    }
+
     investors[msg.sender].qtyTokens += qtyOfTokensRequested;
     investors[msg.sender].contrAmount += amount; //will I get my value to stay and the eth to go?
-    
+
     LogTokensReserved(msg.sender, qtyOfTokensRequested);
-    lockTier = false;
     return tier;
   }
 
@@ -290,18 +232,26 @@ contract CBNBCrowdSale is Ownable{
   }      
 
   /// @notice users can withdraw the wei eth sent
-  /// used for refund process, incase of not enough funds raised
+  /// used for refund process incase not enough funds raised
   /// or denied in the approval process
+  /// @notice no ether will be held in the crowdsale contract
+  /// when refunds become available the amount of ETH needed will
+  /// be manually transfered back to the crowdsale to be refunded
   function RefundWithdrawal()
     external
     contractPaused
     icoHasEnded
-    refundOnly
     returns (bool success)
   {
+    if(weiRaised >= minLimit){
+      require(investors[msg.sender].whitelistStatus != Status.Approved);
+    }
+
     uint256 sendValue = investors[msg.sender].contrAmount;
     investors[msg.sender].contrAmount = 0;
+    investors[msg.sender].qtyTokens = 0;
     msg.sender.transfer(sendValue);
+  
     LogWithdrawal(msg.sender, sendValue);
     return true;
   }
@@ -315,25 +265,24 @@ contract CBNBCrowdSale is Ownable{
     onlyOwner
   {
     cleanup();
-    bnbToken.transferFrom(owner, multiSigWallet, transferUnsoldICOTokens());
+    bnbToken.transferFrom(owner, multiSigWallet, calculateUnsoldICOTokens());
     bnbToken.transferFrom(owner, teamWallet, _internalTokens);   
   }
   
   /// @notice Transfer any ether accidentally left in this contract 
   function cleanup()
     internal
-    onlyOwner
   {
     multiSigWallet.transfer(this.balance);
   }
 
-  /// @notice transfer unsold tokens to multiSigWallet to be used at a later date
-  function transferUnsoldICOTokens()
+  /// @notice calculate unsold tokens for transfer to multiSigWallet to be used at a later date
+  function calculateUnsoldICOTokens()
     internal
     returns (uint256)
   {
     uint256 remainingTokens;
-    for(uint8 i = 0; i < 6; i++){
+    for(uint8 i = 0; i < TIER_COUNT; i++){
       if(saleTier[i].tokensSold < saleTier[i].tokensToBeSold){
         remainingTokens += saleTier[i].tokensToBeSold.sub(saleTier[i].tokensSold);
       }
