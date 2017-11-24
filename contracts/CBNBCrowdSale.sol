@@ -201,7 +201,8 @@ contract CBNBCrowdSale is Ownable{
     internal 
   {
     require(_investorAddress != 0x0);
-    investors[_investorAddress].whitelistStatus = Status.Denied;     
+    investors[_investorAddress].whitelistStatus = Status.Denied;
+    investors[_investorAddress].qtyTokens = 0;     
   }
 
   /// @notice used to move tokens from the later tiers into the earlier tiers
