@@ -1,5 +1,5 @@
-pragma solidity ^0.4.13;
-//version 0.1.1
+pragma solidity ^0.4.18;
+//version 0.1.2
 import './CBNBToken.sol';
 import './Ownable.sol';
 import './SafeMath.sol';
