@@ -9,6 +9,7 @@ contract CBNBCrowdSale is Ownable{
 
   uint256 constant internal MIN_CONTRIBUTION = 0.5 ether;
   uint256 constant internal TOKEN_DECIMALS = 10**10;
+  uint256 constant internal ETH_DECIMALS = 10**18;
   uint8 constant internal TIER_COUNT = 6;
 
   address public multiSigWallet;
@@ -22,7 +23,6 @@ contract CBNBCrowdSale is Ownable{
   uint256 public cap;
   uint8 private tier;
   bool private paused;
-  bool private lockTier;
 
   enum Status {
     New, Approved, Denied
@@ -59,11 +59,11 @@ contract CBNBCrowdSale is Ownable{
   }
 
   modifier icoHasEnded() {
-    require(weiRaised >= cap || now > icoEndTime || calculateUnsoldICOTokens() == 0);
+    require(weiRaised < cap || now < icoEndTime || calculateUnsoldICOTokens() != 0);
     _;
   }
 
-  modifier contractPaused(){
+  modifier pausedContract(){
     require(paused == false);
     _;
   }
@@ -86,9 +86,8 @@ contract CBNBCrowdSale is Ownable{
     bnbToken = CBNBToken(_bnbToken);    
     decimals = 10;
     minLimit = 15000 ether;
-    lockTier = false;
     owner = msg.sender;
-    cap = 165000 ether;
+    cap = 171000 ether;
 
    for(uint8 i=0; i<TIER_COUNT; i++){ 
     saleTier[i].tokensToBeSold = 100000000*TOKEN_DECIMALS;
@@ -112,7 +111,7 @@ contract CBNBCrowdSale is Ownable{
     external
     payable
     icoHasEnded
-    contractPaused
+    pausedContract
     isValidPayload
     
     returns (uint8)
@@ -123,42 +122,36 @@ contract CBNBCrowdSale is Ownable{
     uint256 qtyOfTokensRequested;
     uint256 tierRemainingTokens;
     uint256 remainingWei;
-    
-    qtyOfTokensRequested = ((msg.value.mul(saleTier[tier].price)).div(10**18)).mul(TOKEN_DECIMALS);
+    uint256 amount;
+
+    qtyOfTokensRequested = ((msg.value.mul(saleTier[tier].price)).div(ETH_DECIMALS)).mul(TOKEN_DECIMALS);
     
     if ((qtyOfTokensRequested.add(saleTier[tier].tokensSold)) >= (saleTier[tier].tokensToBeSold)){
       tierRemainingTokens = saleTier[tier].tokensToBeSold.sub(saleTier[tier].tokensSold);
 
-      /// if someone buys the very last tokens for sale with an amount that results in a remainder then
-      /// there will be a manual return once the sale is complete
       if(qtyOfTokensRequested != tierRemainingTokens){
-        remainingWei = msg.value.sub(((tierRemainingTokens.div(saleTier[tier].price)).mul(10**18)).div(TOKEN_DECIMALS)); 
+        remainingWei = msg.value.sub(((tierRemainingTokens.div(saleTier[tier].price)).mul(ETH_DECIMALS)).div(TOKEN_DECIMALS)); 
       }
 
       qtyOfTokensRequested = tierRemainingTokens;
       tier++; //Will allow to roll from one tier to the next.
 
-      if (tier <= 5){
-        uint256 buyTokensRemainingWei = ((remainingWei.mul(saleTier[tier].price)).div(10**18)).mul(TOKEN_DECIMALS);
+      ///This will leave small amounts of dust in the contract that will be cleanedup later
+      if (tier < TIER_COUNT){
+        uint256 buyTokensRemainingWei = ((remainingWei.mul(saleTier[tier].price)).div(ETH_DECIMALS)).mul(TOKEN_DECIMALS);
         qtyOfTokensRequested += buyTokensRemainingWei;
-      } 
+        remainingWei = 0;
+      } else {
+        msg.sender.transfer(remainingWei);
+      }
     }
 
-    uint256 amount = msg.value;
+    amount = msg.value.sub(remainingWei);
     weiRaised += amount;
 
-    if(weiRaised > cap){
-      cap.sub(weiRaised);
-      msg.sender.transfer(weiRaised.sub(cap));
-    }
-
-    multiSigWallet.transfer(msg.value);
+    multiSigWallet.transfer(amount);
   
     saleTier[tier].tokensSold += qtyOfTokensRequested;
-
-    if(investors[msg.sender].whitelistStatus != Status.Approved){
-      investors[msg.sender].whitelistStatus = Status.New;
-    }
 
     investors[msg.sender].qtyTokens += qtyOfTokensRequested;
     investors[msg.sender].contrAmount += amount; //will I get my value to stay and the eth to go?
@@ -169,7 +162,7 @@ contract CBNBCrowdSale is Ownable{
 
   /// notice interface for founders to whitelist investors
   ///  addresses array of investors
-  ///  tier tier Number
+  ///  tier Number
   ///  status enable or disable
   function whitelistAddresses(address[] _addresses, bool _status) 
     public 
@@ -240,7 +233,7 @@ contract CBNBCrowdSale is Ownable{
   /// be manually transfered back to the crowdsale to be refunded
   function RefundWithdrawal()
     external
-    contractPaused
+    pausedContract
     icoHasEnded
     returns (bool success)
   {

@@ -19,7 +19,7 @@ contract CBNBTeamWallet is Ownable{
   event LogWithdrawal(address _teamMember, uint256 _tokenAmount);
   
 
-  modifier withdrawalTime() { 
+  modifier withdrawalAvailable() { 
     require(now >= startTime.add(FREEZE_TIME)); 
     _; 
   }
@@ -47,7 +47,7 @@ contract CBNBTeamWallet is Ownable{
 
   function transferTeamTokens()
     public
-    withdrawalTime
+    withdrawalAvailable
     returns (bool success)
   {
     uint256 sendValue = teamMember[msg.sender];
