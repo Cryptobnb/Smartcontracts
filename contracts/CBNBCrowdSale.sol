@@ -1,5 +1,5 @@
 pragma solidity ^0.4.18;
-//version 0.1.2
+//version 0.1.4
 import './CBNBToken.sol';
 import './Ownable.sol';
 import './SafeMath.sol';
@@ -50,6 +50,7 @@ contract CBNBCrowdSale is Ownable{
    
   mapping(uint8 => SaleTier) saleTier;
 
+  event LogTokensTransferedFrom(address _owner, address _msgsender, uint256 _qtyOfTokensRequested);
   event LogTokensReserved(address _buyer, uint256 _amount);
   event LogWithdrawal(address _investor, uint256 _amount); 
  
@@ -58,8 +59,13 @@ contract CBNBCrowdSale is Ownable{
     _;
   }
 
+  modifier icoIsActive() {
+    require(weiRaised < cap && now < icoEndTime && calculateUnsoldICOTokens() > 0);
+    _;
+  }
+
   modifier icoHasEnded() {
-    require(weiRaised < cap || now < icoEndTime || calculateUnsoldICOTokens() != 0);
+    require(weiRaised > cap || now > icoEndTime || calculateUnsoldICOTokens() == 0);
     _;
   }
 
@@ -110,7 +116,7 @@ contract CBNBCrowdSale is Ownable{
   function buyTokens()
     external
     payable
-    icoHasEnded
+    icoIsActive
     pausedContract
     isValidPayload
     
@@ -134,7 +140,7 @@ contract CBNBCrowdSale is Ownable{
       }
 
       qtyOfTokensRequested = tierRemainingTokens;
-      tier++; //Will allow to roll from one tier to the next.
+      tier++; 
 
       ///This will leave small amounts of dust in the contract that will be cleanedup later
       if (tier < TIER_COUNT){
@@ -153,10 +159,15 @@ contract CBNBCrowdSale is Ownable{
   
     saleTier[tier].tokensSold += qtyOfTokensRequested;
 
-    investors[msg.sender].qtyTokens += qtyOfTokensRequested;
-    investors[msg.sender].contrAmount += amount; //will I get my value to stay and the eth to go?
+    if(investors[msg.sender].whitelistStatus == Status.Approved){
+      bnbToken.transferFrom(owner, msg.sender, qtyOfTokensRequested);
+      LogTokensTransferedFrom(owner, msg.sender, qtyOfTokensRequested);     
+    } else {
+      investors[msg.sender].qtyTokens += qtyOfTokensRequested;
+      investors[msg.sender].contrAmount += amount;
+      LogTokensReserved(msg.sender, qtyOfTokensRequested);
+    }
 
-    LogTokensReserved(msg.sender, qtyOfTokensRequested);
     return tier;
   }
 
@@ -187,6 +198,7 @@ contract CBNBCrowdSale is Ownable{
     uint256 tkns = investors[_investorAddress].qtyTokens;
     investors[_investorAddress].qtyTokens = 0;
     bnbToken.transferFrom(owner, _investorAddress, tkns);
+    LogTokensTransferedFrom(owner, msg.sender, tkns);
   }
 
   /// @notice allows denied buyers the ability to get their Ether back
