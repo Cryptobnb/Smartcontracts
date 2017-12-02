@@ -65,7 +65,7 @@ contract CBNBCrowdSale is Ownable{
   }
 
   modifier icoHasEnded() {
-    require(weiRaised > cap || now > icoEndTime || calculateUnsoldICOTokens() == 0);
+    require(weiRaised >= cap || now > icoEndTime || calculateUnsoldICOTokens() == 0);
     _;
   }
 
