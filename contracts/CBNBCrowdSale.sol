@@ -108,7 +108,7 @@ contract CBNBCrowdSale is Ownable{
     public
     payable
   {
-    revert();
+    require(msg.sender == owner);
   }
 
   /// @notice buyer calls this function to order to get on the list for approval
@@ -125,46 +125,42 @@ contract CBNBCrowdSale is Ownable{
     require(investors[msg.sender].whitelistStatus != Status.Denied);
     require(msg.value >= MIN_CONTRIBUTION);
 
-    uint256 qtyOfTokensRequested;
-    uint256 tierRemainingTokens;
+    uint256 buyTokensRemainingWei;
+    uint256 qtyOfTokensRequested = ((msg.value.mul(saleTier[tier].price)).div(ETH_DECIMALS)).mul(TOKEN_DECIMALS);
+    uint256 tierRemainingTokens = saleTier[tier].tokensToBeSold.sub(saleTier[tier].tokensSold);
     uint256 remainingWei;
-    uint256 amount;
-
-    qtyOfTokensRequested = ((msg.value.mul(saleTier[tier].price)).div(ETH_DECIMALS)).mul(TOKEN_DECIMALS);
+    uint256 amount; 
     
-    if ((qtyOfTokensRequested.add(saleTier[tier].tokensSold)) >= (saleTier[tier].tokensToBeSold)){
-      tierRemainingTokens = saleTier[tier].tokensToBeSold.sub(saleTier[tier].tokensSold);
-
-      if(qtyOfTokensRequested != tierRemainingTokens){
-        remainingWei = msg.value.sub(((tierRemainingTokens.div(saleTier[tier].price)).mul(ETH_DECIMALS)).div(TOKEN_DECIMALS)); 
-      }
-
+    if (qtyOfTokensRequested >= tierRemainingTokens){
+      remainingWei = msg.value.sub(((tierRemainingTokens.div(saleTier[tier].price)).mul(ETH_DECIMALS)).div(TOKEN_DECIMALS));
+      saleTier[tier].tokensSold += tierRemainingTokens;
       qtyOfTokensRequested = tierRemainingTokens;
       tier++; 
 
-      ///This will leave small amounts of dust in the contract that will be cleanedup later
       if (tier < TIER_COUNT){
-        uint256 buyTokensRemainingWei = ((remainingWei.mul(saleTier[tier].price)).div(ETH_DECIMALS)).mul(TOKEN_DECIMALS);
+        buyTokensRemainingWei = ((remainingWei.mul(saleTier[tier].price)).div(ETH_DECIMALS)).mul(TOKEN_DECIMALS);
         qtyOfTokensRequested += buyTokensRemainingWei;
+        saleTier[tier].tokensSold += buyTokensRemainingWei;
         remainingWei = 0;
       } else {
-        msg.sender.transfer(remainingWei);
+        msg.sender.transfer(remainingWei); 
       }
+
+    } else {
+      saleTier[tier].tokensSold += qtyOfTokensRequested;
     }
 
     amount = msg.value.sub(remainingWei);
     weiRaised += amount;
-
     multiSigWallet.transfer(amount);
-  
-    saleTier[tier].tokensSold += qtyOfTokensRequested;
+
+    investors[msg.sender].contrAmount += amount;
 
     if(investors[msg.sender].whitelistStatus == Status.Approved){
       bnbToken.transferFrom(owner, msg.sender, qtyOfTokensRequested);
       LogTokensTransferedFrom(owner, msg.sender, qtyOfTokensRequested);     
     } else {
       investors[msg.sender].qtyTokens += qtyOfTokensRequested;
-      investors[msg.sender].contrAmount += amount;
       LogTokensReserved(msg.sender, qtyOfTokensRequested);
     }
 
@@ -284,6 +280,7 @@ contract CBNBCrowdSale is Ownable{
 
   /// @notice calculate unsold tokens for transfer to multiSigWallet to be used at a later date
   function calculateUnsoldICOTokens()
+    view
     internal
     returns (uint256)
   {

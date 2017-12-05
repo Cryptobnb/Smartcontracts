@@ -22,6 +22,20 @@ contract CBNBToken is StandardToken, Ownable {
 		// address of the owner recieved the totalSupply of tokens.
     assert(balances[owner] == totalSupply);                
   }
+
+  ///notice adds the ability to set the crowdsaleContract by the owner for transfer and transferfrom functions
+  function setCrowdsaleContract(address _crowdsaleContract)
+  public 
+  onlyOwner {
+  crowdsaleContract = _crowdsaleContract;
+  }
+
+  ///notice once activated the tokens will be transferable by token holders cannot be reverted
+  function activate() 
+  public
+  onlyOwner {
+  paused = false;
+  }
 }
 
 
