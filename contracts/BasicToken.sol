@@ -11,12 +11,6 @@ import './SafeMath.sol';
  */
 contract BasicToken is ERC20Basic {
   using SafeMath for uint256;
-
-  ///used for disabling tranding of tokens by token holders until after the contract owner activates the functions
-  bool public paused = true;
-
-  ///holds the crowdsale address, set after the crowdsale has been created
-  address public crowdsaleContract;
   
   mapping(address => uint256) balances;
 
@@ -26,7 +20,6 @@ contract BasicToken is ERC20Basic {
   * @param _value The amount to be transferred.
   */
   function transfer(address _to, uint256 _value) public returns (bool) {
-    require (!paused || msg.sender == crowdsaleContract); //doesnt allow transfers until unpaused or crowdsaleContract calls it
     require(_to != address(0));
     require(_value <= balances[msg.sender]);
 
