@@ -52,7 +52,7 @@ contract CBNBTeamWallet is Ownable{
   {
     uint256 sendValue = teamMember[msg.sender];
     teamMember[msg.sender] = 0;
-    bnbToken.transferFrom(this, msg.sender, sendValue);
+    bnbToken.transfer(msg.sender, sendValue);
     LogWithdrawal(msg.sender, sendValue);
     return true;
   }

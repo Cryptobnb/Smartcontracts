@@ -97,13 +97,15 @@ contract CBNBCrowdSale is Ownable{
 
    for(uint8 i=0; i<TIER_COUNT; i++){ 
     saleTier[i].tokensToBeSold = 100000000*TOKEN_DECIMALS;
-    saleTier[i].price = (3900 - 150*i); //tokens per eth
+    saleTier[i].price = (11700 - 450*i); //tokens per eth
     saleTier[i].tokensSold = 0;
    }
  }
 
   /// @dev Fallback function.
   /// @dev Reject random eth being sent to the contract.
+  /// @notice allows for owner to send eth to the contract in the event
+  /// of a refund
   function()
     public
     payable
