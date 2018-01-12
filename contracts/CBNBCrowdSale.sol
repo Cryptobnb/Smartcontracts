@@ -1,5 +1,5 @@
-pragma solidity ^0.4.18;
-//version 0.1.4
+pragma solidity 0.4.18;
+//version 0.2
 import './CBNBToken.sol';
 import './Ownable.sol';
 import './SafeMath.sol';
@@ -7,16 +7,17 @@ import './SafeMath.sol';
 contract CBNBCrowdSale is Ownable{
   using SafeMath for uint256;
 
-  uint256 constant internal MIN_CONTRIBUTION = 0.5 ether;
+  uint256 constant internal MIN_CONTRIBUTION = 0.1 ether;
   uint256 constant internal TOKEN_DECIMALS = 10**10;
   uint256 constant internal ETH_DECIMALS = 10**18;
-  uint8 constant internal TIER_COUNT = 6;
+  uint8 constant internal TIER_COUNT = 5;
 
   address public multiSigWallet;
   uint256 public icoStartTime;
   uint256 public icoEndTime;
   address public teamWallet;
   uint256 public weiRaised;
+  uint256 public ethPrice;
   uint256 public decimals;
   uint256 public minLimit;
   address public owner;
@@ -77,10 +78,10 @@ contract CBNBCrowdSale is Ownable{
   /// @dev confirm price thresholds and amounts
   ///  multiSigWallet for holding ether
   ///  bnbToken token address pushed to mainnet first
-  function CBNBCrowdSale(address _multiSigWallet, address _bnbToken, address _teamWallet) 
+  function CBNBCrowdSale(address _depositWallet, address _bnbToken, address _teamWallet) 
     public 
   {
-    require(_multiSigWallet != 0x0);
+    require(_depositWallet != 0x0);
     require(_bnbToken != 0x0);
     require(_teamWallet != 0x0);     
 
@@ -91,14 +92,12 @@ contract CBNBCrowdSale is Ownable{
     weiRaised = 0;
     bnbToken = CBNBToken(_bnbToken);    
     decimals = 10;
-    minLimit = 15000 ether;
+    minLimit = 5000 ether;
     owner = msg.sender;
-    cap = 171000 ether;
+    cap = 15000 ether;
 
    for(uint8 i=0; i<TIER_COUNT; i++){ 
-    saleTier[i].tokensToBeSold = 100000000*TOKEN_DECIMALS;
-    saleTier[i].price = (11700 - 450*i); //tokens per eth
-    saleTier[i].tokensSold = 0;
+    saleTier[i].tokensToBeSold = (100000000-(i*20000000))*TOKEN_DECIMALS;
    }
  }
 
@@ -113,6 +112,15 @@ contract CBNBCrowdSale is Ownable{
     require(msg.sender == owner);
   }
 
+  ///@notice feels risky
+  ///@param eth price will exclude decimals
+  function getEtherPrice(uint256 _price)
+    external
+    onlyOwner
+  {
+    ethPrice = _price;
+  }
+
   /// @notice buyer calls this function to order to get on the list for approval
   /// buyers must send the ether with their whitelist application
   function buyTokens()
@@ -124,23 +132,24 @@ contract CBNBCrowdSale is Ownable{
     
     returns (uint8)
   {
+    require(ethPrice != 0);
     require(investors[msg.sender].whitelistStatus != Status.Denied);
     require(msg.value >= MIN_CONTRIBUTION);
 
+    uint256 price = (ETH_DECIMALS.mul(40+(8*tier)).div(1000)).div(ethPrice); //wei per token discluding decimals
     uint256 buyTokensRemainingWei;
-    uint256 qtyOfTokensRequested = ((msg.value.mul(saleTier[tier].price)).div(ETH_DECIMALS)).mul(TOKEN_DECIMALS);
+    uint256 qtyOfTokensRequested = (msg.value.div(price)).mul(TOKEN_DECIMALS);
     uint256 tierRemainingTokens = saleTier[tier].tokensToBeSold.sub(saleTier[tier].tokensSold);
     uint256 remainingWei;
     uint256 amount; 
     
     if (qtyOfTokensRequested >= tierRemainingTokens){
-      remainingWei = msg.value.sub(((tierRemainingTokens.div(saleTier[tier].price)).mul(ETH_DECIMALS)).div(TOKEN_DECIMALS));
-      saleTier[tier].tokensSold += tierRemainingTokens;
+      remainingWei = msg.value.sub((tierRemainingTokens.div(TOKEN_DECIMALS)).mul(price));
       qtyOfTokensRequested = tierRemainingTokens;
       tier++; 
 
       if (tier < TIER_COUNT){
-        buyTokensRemainingWei = ((remainingWei.mul(saleTier[tier].price)).div(ETH_DECIMALS)).mul(TOKEN_DECIMALS);
+        buyTokensRemainingWei = (remainingWei.mul(price)).mul(TOKEN_DECIMALS);
         qtyOfTokensRequested += buyTokensRemainingWei;
         saleTier[tier].tokensSold += buyTokensRemainingWei;
         remainingWei = 0;
