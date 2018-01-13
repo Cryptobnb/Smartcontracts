@@ -12,7 +12,7 @@ contract CBNBCrowdSale is Ownable{
   uint256 constant internal ETH_DECIMALS = 10**18;
   uint8 constant internal TIER_COUNT = 5;
 
-  address public multiSigWallet;
+  address public depositWallet;
   uint256 public icoStartTime;
   uint256 public icoEndTime;
   address public teamWallet;
@@ -76,7 +76,7 @@ contract CBNBCrowdSale is Ownable{
   }
 
   /// @dev confirm price thresholds and amounts
-  ///  multiSigWallet for holding ether
+  ///  depositWallet for holding ether
   ///  bnbToken token address pushed to mainnet first
   function CBNBCrowdSale(address _depositWallet, address _bnbToken, address _teamWallet) 
     public 
@@ -85,7 +85,7 @@ contract CBNBCrowdSale is Ownable{
     require(_bnbToken != 0x0);
     require(_teamWallet != 0x0);     
 
-    multiSigWallet = _multiSigWallet;
+    depositWallet = _depositWallet;
     icoStartTime = now; //pick a block number to start on
     icoEndTime = now + 60 days; //pick a block number to end on
     teamWallet = _teamWallet;
@@ -102,8 +102,8 @@ contract CBNBCrowdSale is Ownable{
  }
 
   /// @dev Fallback function.
-  /// @dev Reject random eth being sent to the contract.
-  /// @notice allows for owner to send eth to the contract in the event
+  /// @dev Reject random ethereum being sent to the contract.
+  /// @notice allows for owner to send ethereum to the contract in the event
   /// of a refund
   function()
     public
@@ -113,7 +113,7 @@ contract CBNBCrowdSale is Ownable{
   }
 
   ///@notice feels risky
-  ///@param eth price will exclude decimals
+  ///param ethereum price will exclude decimals
   function getEtherPrice(uint256 _price)
     external
     onlyOwner
@@ -122,7 +122,7 @@ contract CBNBCrowdSale is Ownable{
   }
 
   /// @notice buyer calls this function to order to get on the list for approval
-  /// buyers must send the ether with their whitelist application
+  /// buyers must send the ethereum with their whitelist application
   function buyTokens()
     external
     payable
@@ -163,7 +163,7 @@ contract CBNBCrowdSale is Ownable{
 
     amount = msg.value.sub(remainingWei);
     weiRaised += amount;
-    multiSigWallet.transfer(amount);
+    depositWallet.transfer(amount);
 
     investors[msg.sender].contrAmount += amount;
 
@@ -208,7 +208,7 @@ contract CBNBCrowdSale is Ownable{
     LogTokensTransferedFrom(owner, msg.sender, tkns);
   }
 
-  /// @notice allows denied buyers the ability to get their Ether back
+  /// @notice allows denied buyers the ability to get their Ethereum back
   function deniedWhitelistAddress(address _investorAddress) 
     internal 
   {
@@ -244,11 +244,11 @@ contract CBNBCrowdSale is Ownable{
     paused = false;
   }      
 
-  /// @notice users can withdraw the wei eth sent
+  /// @notice users can withdraw the wei etheum sent
   /// used for refund process incase not enough funds raised
   /// or denied in the approval process
-  /// @notice no ether will be held in the crowdsale contract
-  /// when refunds become available the amount of ETH needed will
+  /// @notice no ethereum will be held in the crowdsale contract
+  /// when refunds become available the amount of Ethererum needed will
   /// be manually transfered back to the crowdsale to be refunded
   function RefundWithdrawal()
     external
@@ -278,18 +278,18 @@ contract CBNBCrowdSale is Ownable{
     onlyOwner
   {
     cleanup();
-    bnbToken.transferFrom(owner, multiSigWallet, calculateUnsoldICOTokens());
+    bnbToken.transferFrom(owner, depositWallet, calculateUnsoldICOTokens());
     bnbToken.transferFrom(owner, teamWallet, _internalTokens);   
   }
   
-  /// @notice Transfer any ether accidentally left in this contract 
+  /// @notice Transfer any ethereum accidentally left in this contract 
   function cleanup()
     internal
   {
-    multiSigWallet.transfer(this.balance);
+    depositWallet.transfer(this.balance);
   }
 
-  /// @notice calculate unsold tokens for transfer to multiSigWallet to be used at a later date
+  /// @notice calculate unsold tokens for transfer to depositWallet to be used at a later date
   function calculateUnsoldICOTokens()
     view
     internal
