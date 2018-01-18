@@ -87,12 +87,12 @@ contract CBNBCrowdSale is Ownable{
 
     depositWallet = _depositWallet;
     icoStartTime = now; //pick a block number to start on
-    icoEndTime = now + 60 days; //pick a block number to end on
+    icoEndTime = now + 90 days; //pick a block number to end on
     teamWallet = _teamWallet;
     weiRaised = 0;
     bnbToken = CBNBToken(_bnbToken);    
     decimals = 10;
-    minLimit = 5000 ether;
+    minLimit = 1500 ether;
     owner = msg.sender;
     cap = 15000 ether;
 
