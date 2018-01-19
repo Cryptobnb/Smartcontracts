@@ -1,5 +1,5 @@
 pragma solidity 0.4.18;
-//version 0.2
+
 import './CBNBToken.sol';
 import './Ownable.sol';
 import './SafeMath.sol';
@@ -29,13 +29,13 @@ contract CBNBCrowdSale is Ownable{
     New, Approved, Denied
   }
 
-  struct WhitelistedInvestors {
+  struct Participant {
     uint256 contrAmount; //amount in wei
     uint256 qtyTokens;
     Status whitelistStatus;
   }
 
-  mapping(address => WhitelistedInvestors) investors;
+  mapping(address => Participant) participants;
 
   //The CryptoBnB token contract
   CBNBToken public bnbToken; 
@@ -132,14 +132,18 @@ contract CBNBCrowdSale is Ownable{
     
     returns (uint8)
   {
+    
+    Participant storage participant = participants[msg.sender];
+    SaleTier storage tiers = saleTier[tier];
+    
     require(ethPrice != 0);
-    require(investors[msg.sender].whitelistStatus != Status.Denied);
+    require(participant.whitelistStatus != Status.Denied);
     require(msg.value >= MIN_CONTRIBUTION);
 
     uint256 price = (ETH_DECIMALS.mul(40+(8*tier)).div(1000)).div(ethPrice); //wei per token discluding decimals
     uint256 buyTokensRemainingWei;
     uint256 qtyOfTokensRequested = (msg.value.div(price)).mul(TOKEN_DECIMALS);
-    uint256 tierRemainingTokens = saleTier[tier].tokensToBeSold.sub(saleTier[tier].tokensSold);
+    uint256 tierRemainingTokens = tiers.tokensToBeSold.sub(tiers.tokensSold);
     uint256 remainingWei;
     uint256 amount; 
     
@@ -151,27 +155,27 @@ contract CBNBCrowdSale is Ownable{
       if (tier < TIER_COUNT){
         buyTokensRemainingWei = (remainingWei.mul(price)).mul(TOKEN_DECIMALS);
         qtyOfTokensRequested += buyTokensRemainingWei;
-        saleTier[tier].tokensSold += buyTokensRemainingWei;
+        tiers.tokensSold += buyTokensRemainingWei;
         remainingWei = 0;
       } else {
         msg.sender.transfer(remainingWei); 
       }
 
     } else {
-      saleTier[tier].tokensSold += qtyOfTokensRequested;
+      tiers.tokensSold += qtyOfTokensRequested;
     }
 
     amount = msg.value.sub(remainingWei);
     weiRaised += amount;
     depositWallet.transfer(amount);
 
-    investors[msg.sender].contrAmount += amount;
+    participant.contrAmount += amount;
 
-    if(investors[msg.sender].whitelistStatus == Status.Approved){
+    if(participant.whitelistStatus == Status.Approved){
       bnbToken.transferFrom(owner, msg.sender, qtyOfTokensRequested);
       LogTokensTransferedFrom(owner, msg.sender, qtyOfTokensRequested);     
     } else {
-      investors[msg.sender].qtyTokens += qtyOfTokensRequested;
+      participant.qtyTokens += qtyOfTokensRequested;
       LogTokensReserved(msg.sender, qtyOfTokensRequested);
     }
 
@@ -200,10 +204,11 @@ contract CBNBCrowdSale is Ownable{
   function approvedWhitelistAddress(address _investorAddress) 
     internal
   {
+    Participant storage participant = participants[_investorAddress];
     require(_investorAddress != 0x0);
-    investors[_investorAddress].whitelistStatus = Status.Approved;
-    uint256 tkns = investors[_investorAddress].qtyTokens;
-    investors[_investorAddress].qtyTokens = 0;
+    participant.whitelistStatus = Status.Approved;
+    uint256 tkns = participant.qtyTokens;
+    participant.qtyTokens = 0;
     bnbToken.transferFrom(owner, _investorAddress, tkns);
     LogTokensTransferedFrom(owner, msg.sender, tkns);
   }
@@ -212,9 +217,10 @@ contract CBNBCrowdSale is Ownable{
   function deniedWhitelistAddress(address _investorAddress) 
     internal 
   {
+    Participant storage participant = participants[_investorAddress];
     require(_investorAddress != 0x0);
-    investors[_investorAddress].whitelistStatus = Status.Denied;
-    investors[_investorAddress].qtyTokens = 0;     
+    participant.whitelistStatus = Status.Denied;
+    participant.qtyTokens = 0;     
   }
 
   /// @notice used to move tokens from the later tiers into the earlier tiers
@@ -226,11 +232,12 @@ contract CBNBCrowdSale is Ownable{
     public
     onlyOwner
   {
+    SaleTier storage tiers = saleTier[_tierFrom];
     require(paused = true);
     require(_tierFrom > _tierTo);
-    require(_tokens <= ((saleTier[_tierFrom].tokensToBeSold).sub(saleTier[_tierFrom].tokensSold)));
+    require(_tokens <= ((tiers.tokensToBeSold).sub(tiers.tokensSold)));
 
-    saleTier[_tierFrom].tokensToBeSold.sub(_tokens);
+    tiers.tokensToBeSold.sub(_tokens);
     saleTier[_tierTo].tokensToBeSold.add(_tokens);
   }
 
@@ -256,13 +263,14 @@ contract CBNBCrowdSale is Ownable{
     icoHasEnded
     returns (bool success)
   {
+    Participant storage participant = participants[msg.sender];
     if(weiRaised >= minLimit){
-      require(investors[msg.sender].whitelistStatus != Status.Approved);
+      require(participant.whitelistStatus != Status.Approved);
     }
 
-    uint256 sendValue = investors[msg.sender].contrAmount;
-    investors[msg.sender].contrAmount = 0;
-    investors[msg.sender].qtyTokens = 0;
+    uint256 sendValue = participant.contrAmount;
+    participant.contrAmount = 0;
+    participant.qtyTokens = 0;
     msg.sender.transfer(sendValue);
   
     LogWithdrawal(msg.sender, sendValue);
