@@ -12,10 +12,12 @@ contract CBNBCrowdSale is Ownable{
   uint256 constant internal ETH_DECIMALS = 10**18;
   uint8 constant internal TIER_COUNT = 5;
 
+  uint256 public totalTokensSold;
   address public depositWallet;
   uint256 public icoStartTime;
   uint256 public icoEndTime;
   address public teamWallet;
+  uint256 public tokenPrice;
   uint256 public weiRaised;
   uint256 public ethPrice;
   uint256 public decimals;
@@ -85,11 +87,13 @@ contract CBNBCrowdSale is Ownable{
     require(_bnbToken != 0x0);
     require(_teamWallet != 0x0);     
 
+    totalTokensSold;
     depositWallet = _depositWallet;
     icoStartTime = now; //pick a block number to start on
     icoEndTime = now + 90 days; //pick a block number to end on
     teamWallet = _teamWallet;
-    weiRaised = 0;
+    tokenPrice;
+    weiRaised;
     bnbToken = CBNBToken(_bnbToken);    
     decimals = 10;
     minLimit = 1500 ether;
@@ -119,6 +123,13 @@ contract CBNBCrowdSale is Ownable{
     onlyOwner
   {
     ethPrice = _price;
+    tokenPrice = 40+(8*tier);
+  }
+
+  function getTokenPrice()
+    external
+  {
+    tokenPrice = 40+(8*tier);
   }
 
   /// @notice buyer calls this function to order to get on the list for approval
@@ -165,6 +176,7 @@ contract CBNBCrowdSale is Ownable{
       tiers.tokensSold += qtyOfTokensRequested;
     }
 
+    totalTokensSold += qtyOfTokensRequested;
     amount = msg.value.sub(remainingWei);
     weiRaised += amount;
     depositWallet.transfer(amount);
