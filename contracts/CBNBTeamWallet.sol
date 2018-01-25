@@ -1,8 +1,8 @@
 pragma solidity 0.4.18;
 
 import './CBNBToken.sol';
-import './Ownable.sol';
-import './SafeMath.sol';
+import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
+import 'zeppelin-solidity/contracts/math/SafeMath.sol';
 
 contract CBNBTeamWallet is Ownable{
   using SafeMath for uint256;
@@ -24,7 +24,6 @@ contract CBNBTeamWallet is Ownable{
     _; 
   }
   
-
   function CBNBTeamWallet(address _bnbToken)
     public
   {  

@@ -1,8 +1,8 @@
 pragma solidity 0.4.18;
 
 import './CBNBToken.sol';
-import './Ownable.sol';
-import './SafeMath.sol';
+import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
+import 'zeppelin-solidity/contracts/math/SafeMath.sol';
 
 contract CBNBCrowdSale is Ownable{
   using SafeMath for uint256;
@@ -14,13 +14,11 @@ contract CBNBCrowdSale is Ownable{
 
   uint256 public totalTokensSold;
   address public depositWallet;
-  uint256 public icoStartTime;
   uint256 public icoEndTime;
   address public teamWallet;
   uint256 public tokenPrice;
   uint256 public weiRaised;
   uint256 public ethPrice;
-  uint256 public decimals;
   uint256 public minLimit;
   address public owner;
   uint256 public cap;
@@ -35,6 +33,7 @@ contract CBNBCrowdSale is Ownable{
     uint256 contrAmount; //amount in wei
     uint256 qtyTokens;
     Status whitelistStatus;
+    uint256 remainingWei;
   }
 
   mapping(address => Participant) participants;
@@ -72,7 +71,7 @@ contract CBNBCrowdSale is Ownable{
     _;
   }
 
-  modifier pausedContract(){
+  modifier unpausedContract(){
     require(paused == false);
     _;
   }
@@ -89,13 +88,11 @@ contract CBNBCrowdSale is Ownable{
 
     totalTokensSold;
     depositWallet = _depositWallet;
-    icoStartTime = now; //pick a block number to start on
     icoEndTime = now + 90 days; //pick a block number to end on
     teamWallet = _teamWallet;
     tokenPrice;
     weiRaised;
     bnbToken = CBNBToken(_bnbToken);    
-    decimals = 10;
     minLimit = 1500 ether;
     owner = msg.sender;
     cap = 15000 ether;
@@ -123,7 +120,6 @@ contract CBNBCrowdSale is Ownable{
     onlyOwner
   {
     ethPrice = _price;
-    tokenPrice = 40+(8*tier);
   }
 
   function getTokenPrice()
@@ -134,105 +130,80 @@ contract CBNBCrowdSale is Ownable{
 
   /// @notice buyer calls this function to order to get on the list for approval
   /// buyers must send the ethereum with their whitelist application
+   /// @notice buyer calls this function to order to get on the list for approval
+  /// buyers must send the ether with their whitelist application
   function buyTokens()
     external
     payable
     icoIsActive
-    pausedContract
+    unpausedContract
     isValidPayload
     
     returns (uint8)
   {
     
     Participant storage participant = participants[msg.sender];
-    SaleTier storage tiers = saleTier[tier];
-    
+
+    require(msg.sender != owner);
     require(ethPrice != 0);
     require(participant.whitelistStatus != Status.Denied);
     require(msg.value >= MIN_CONTRIBUTION);
 
-    uint256 price = (ETH_DECIMALS.mul(40+(8*tier)).div(1000)).div(ethPrice); //wei per token discluding decimals
-    uint256 buyTokensRemainingWei;
-    uint256 qtyOfTokensRequested = (msg.value.div(price)).mul(TOKEN_DECIMALS);
-    uint256 tierRemainingTokens = tiers.tokensToBeSold.sub(tiers.tokensSold);
-    uint256 remainingWei;
-    uint256 amount; 
-    
-    if (qtyOfTokensRequested >= tierRemainingTokens){
-      remainingWei = msg.value.sub((tierRemainingTokens.div(TOKEN_DECIMALS)).mul(price));
-      qtyOfTokensRequested = tierRemainingTokens;
-      tier++; 
+    uint256 remainingWei = msg.value.add(participant.remainingWei);
+    participant.remainingWei = 0;
+    uint256 totalTokensRequested;
+    uint256 price = (ETH_DECIMALS.mul(uint256(40+(8*tier))).div(1000)).div(ethPrice);
+    uint256 tierRemainingTokens;
+    uint256 tknsRequested;
+  
+    while(remainingWei >= price && tier != TIER_COUNT) {
 
-      if (tier < TIER_COUNT){
-        buyTokensRemainingWei = (remainingWei.mul(price)).mul(TOKEN_DECIMALS);
-        qtyOfTokensRequested += buyTokensRemainingWei;
-        tiers.tokensSold += buyTokensRemainingWei;
-        remainingWei = 0;
-      } else {
-        msg.sender.transfer(remainingWei); 
-      }
-
-    } else {
-      tiers.tokensSold += qtyOfTokensRequested;
+      SaleTier storage tiers = saleTier[tier];
+      price = (ETH_DECIMALS.mul(uint256(40+(8*tier))).div(1000)).div(ethPrice);
+      tknsRequested = (remainingWei.div(price)).mul(TOKEN_DECIMALS);
+      tierRemainingTokens = tiers.tokensToBeSold.sub(tiers.tokensSold);
+      if(tknsRequested >= tierRemainingTokens){
+        tknsRequested -= tierRemainingTokens;
+        tiers.tokensSold += tierRemainingTokens;
+        totalTokensRequested += tierRemainingTokens;
+        remainingWei -= ((tierRemainingTokens.mul(price)).div(TOKEN_DECIMALS));
+        tier++;
+      } else{
+        tiers.tokensSold += tknsRequested;
+        totalTokensRequested += tknsRequested;
+        remainingWei -= ((tknsRequested.mul(price)).div(TOKEN_DECIMALS));
+      }  
     }
 
-    totalTokensSold += qtyOfTokensRequested;
-    amount = msg.value.sub(remainingWei);
+    uint256 amount = msg.value.sub(remainingWei);
     weiRaised += amount;
     depositWallet.transfer(amount);
 
+    participant.remainingWei += remainingWei;
     participant.contrAmount += amount;
-
-    if(participant.whitelistStatus == Status.Approved){
-      bnbToken.transferFrom(owner, msg.sender, qtyOfTokensRequested);
-      LogTokensTransferedFrom(owner, msg.sender, qtyOfTokensRequested);     
-    } else {
-      participant.qtyTokens += qtyOfTokensRequested;
-      LogTokensReserved(msg.sender, qtyOfTokensRequested);
-    }
-
+    participant.qtyTokens += totalTokensRequested;
+    totalTokensSold += totalTokensRequested;
+    LogTokensReserved(msg.sender, totalTokensRequested);
+    
     return tier;
   }
-
-  /// notice interface for founders to whitelist investors
-  ///  addresses array of investors
-  ///  tier Number
-  ///  status enable or disable
-  function whitelistAddresses(address[] _addresses, bool _status) 
+ 
+ ///@notice interface for founders to whitelist participants
+  function approveAddressForWhitelist(address _address) 
     public 
-    onlyOwner 
-    {
-        for (uint256 i = 0; i < _addresses.length; i++) {
-            address investorAddress = _addresses[i];
-            if(_status == true){
-                approvedWhitelistAddress(investorAddress); 
-            } else {
-                deniedWhitelistAddress(investorAddress);  
-            } 
-        }
-   }
-
-  /// notice sends requested tokens to the whitelist person
-  function approvedWhitelistAddress(address _investorAddress) 
-    internal
+    onlyOwner
+    icoHasEnded 
   {
-    Participant storage participant = participants[_investorAddress];
-    require(_investorAddress != 0x0);
-    participant.whitelistStatus = Status.Approved;
-    uint256 tkns = participant.qtyTokens;
-    participant.qtyTokens = 0;
-    bnbToken.transferFrom(owner, _investorAddress, tkns);
-    LogTokensTransferedFrom(owner, msg.sender, tkns);
+    participants[_address].whitelistStatus = Status.Approved;
   }
 
-  /// @notice allows denied buyers the ability to get their Ethereum back
-  function deniedWhitelistAddress(address _investorAddress) 
-    internal 
+  ///@notice interface for founders to whitelist participants
+  function denyAddressForWhitelist(address _address) 
+    public 
+    onlyOwner
+    icoHasEnded 
   {
-    Participant storage participant = participants[_investorAddress];
-    require(_investorAddress != 0x0);
-    participant.whitelistStatus = Status.Denied;
-    participant.qtyTokens = 0;     
+    participants[_address].whitelistStatus = Status.Denied;
   }
 
   /// @notice used to move tokens from the later tiers into the earlier tiers
@@ -241,11 +212,12 @@ contract CBNBCrowdSale is Ownable{
   /// param tier to add the tokens to
   /// param how many tokens to take
   function moveTokensForSale(uint8 _tierFrom, uint8 _tierTo, uint256 _tokens) 
+    view
     public
     onlyOwner
   {
     SaleTier storage tiers = saleTier[_tierFrom];
-    require(paused = true);
+    require(paused == true);
     require(_tierFrom > _tierTo);
     require(_tokens <= ((tiers.tokensToBeSold).sub(tiers.tokensSold)));
 
@@ -269,9 +241,9 @@ contract CBNBCrowdSale is Ownable{
   /// @notice no ethereum will be held in the crowdsale contract
   /// when refunds become available the amount of Ethererum needed will
   /// be manually transfered back to the crowdsale to be refunded
-  function RefundWithdrawal()
+  function refundWithdrawal()
     external
-    pausedContract
+    unpausedContract
     icoHasEnded
     returns (bool success)
   {
@@ -322,5 +294,41 @@ contract CBNBCrowdSale is Ownable{
       }
     }
     return remainingTokens;
+  }
+
+  /// notice sends requested tokens to the whitelist person
+  function claimTokens() 
+    external
+    unpausedContract
+    icoHasEnded
+  {
+    Participant storage participant = participants[msg.sender];
+    require(participant.whitelistStatus == Status.Approved);
+    require(participant.qtyTokens != 0);
+    uint256 tkns = participant.qtyTokens;
+    participant.qtyTokens = 0;
+    LogTokensTransferedFrom(owner, msg.sender, tkns);
+    bnbToken.transferFrom(owner, msg.sender, tkns);
+  }
+
+  /// @notice no ethereum will be held in the crowdsale contract
+  /// when refunds become available the amount of Ethererum needed will
+  /// be manually transfered back to the crowdsale to be refunded
+  /// @notice only the last person that buys tokens if they deposited enought to buy more 
+  /// tokens than what is available will be able to use this function
+  function claimRemainingWei()
+    external
+    unpausedContract
+    icoHasEnded
+    returns (bool success)
+  {
+    Participant storage participant = participants[msg.sender];
+    require(participant.whitelistStatus == Status.Approved);
+    require(participant.remainingWei != 0);
+    uint256 sendValue = participant.remainingWei;
+    participant.remainingWei = 0;
+    LogWithdrawal(msg.sender, sendValue);
+    msg.sender.transfer(sendValue);
+    return true;
   }
 }
