@@ -1,6 +1,7 @@
 pragma solidity 0.4.18;
 
 import './CBNBToken.sol';
+import './CBNBTeamWallet.sol';
 import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 import 'zeppelin-solidity/contracts/math/SafeMath.sol';
 
@@ -39,7 +40,8 @@ contract CBNBCrowdSale is Ownable{
   mapping(address => Participant) participants;
 
   //The CryptoBnB token contract
-  CBNBToken public bnbToken; 
+  CBNBToken public bnbToken;
+  CBNBTeamWallet public bnbTeamWallet; 
 
   /// @dev Sale tiers for Institution-ICO, public Pre-ICO, and ICO
   /// @dev Sets the time of start and finish, it will be time of pushing
@@ -89,7 +91,7 @@ contract CBNBCrowdSale is Ownable{
     totalTokensSold;
     depositWallet = _depositWallet;
     icoEndTime = now + 90 days; //pick a block number to end on
-    teamWallet = _teamWallet;
+    bnbTeamWallet = CBNBTeamWallet(_teamWallet);
     tokenPrice;
     weiRaised;
     bnbToken = CBNBToken(_bnbToken);    
@@ -194,6 +196,7 @@ contract CBNBCrowdSale is Ownable{
     onlyOwner
     icoHasEnded 
   {
+    require(_address != address(0));
     participants[_address].whitelistStatus = Status.Approved;
   }
 
@@ -203,6 +206,7 @@ contract CBNBCrowdSale is Ownable{
     onlyOwner
     icoHasEnded 
   {
+    require(_address != address(0));
     participants[_address].whitelistStatus = Status.Denied;
   }
 
@@ -233,7 +237,15 @@ contract CBNBCrowdSale is Ownable{
   /// @notice to unpause functions
   function unpauseContract() public onlyOwner {
     paused = false;
-  }      
+  }
+
+  function checkWhitelistStatus()
+    view
+    public
+    returns (bool whitelisted)
+  {
+    return (participants[msg.sender].whitelistStatus == Status.Approved);
+  }       
 
   /// @notice users can withdraw the wei etheum sent
   /// used for refund process incase not enough funds raised
@@ -269,16 +281,11 @@ contract CBNBCrowdSale is Ownable{
     icoHasEnded
     onlyOwner
   {
-    cleanup();
+
+    bnbTeamWallet.setFreezeTime(block.number);
     bnbToken.transferFrom(owner, depositWallet, calculateUnsoldICOTokens());
-    bnbToken.transferFrom(owner, teamWallet, _internalTokens);   
-  }
-  
-  /// @notice Transfer any ethereum accidentally left in this contract 
-  function cleanup()
-    internal
-  {
-    depositWallet.transfer(this.balance);
+    bnbToken.transferFrom(owner, teamWallet, _internalTokens);
+    depositWallet.transfer(this.balance);   
   }
 
   /// @notice calculate unsold tokens for transfer to depositWallet to be used at a later date

@@ -9,10 +9,10 @@ contract CBNBTeamWallet is Ownable{
 
   uint256 constant public FREEZE_TIME = 365 days;
   
-  address public withdrawalAddress;
   CBNBToken public bnbToken;
   uint256 public startTime;
   uint256 public totalWithdrawn;
+  address public crowdsaleContract;
 
   mapping (address => uint256) teamMember;
   
@@ -27,12 +27,25 @@ contract CBNBTeamWallet is Ownable{
   function CBNBTeamWallet(address _bnbToken)
     public
   {  
-    require(_bnbToken != 0x0);
-
-    startTime = now;
+    require(_bnbToken != address(0));
     bnbToken = CBNBToken(_bnbToken);
     owner = msg.sender;
 
+  }
+
+  function setCrowdsaleContract(address _crowdsaleContract)
+    public
+    onlyOwner
+  {
+    crowdsaleContract = _crowdsaleContract;
+  }
+
+  function setFreezeTime(uint256 freezeStartTime)
+    external
+  {
+    require(msg.sender == crowdsaleContract);
+    require(crowdsaleContract != address(0));
+    startTime = freezeStartTime;
   }
 
   function addTeamMember(address _teamMember, uint256 _tokenAmount)
