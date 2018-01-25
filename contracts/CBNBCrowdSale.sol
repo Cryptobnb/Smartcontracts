@@ -147,7 +147,7 @@ contract CBNBCrowdSale is Ownable{
     require(msg.sender != owner);
     require(ethPrice != 0);
     require(participant.whitelistStatus != Status.Denied);
-    require(msg.value >= MIN_CONTRIBUTION);
+    require(msg.value.add(participant.remainingWei) >= MIN_CONTRIBUTION);
 
     uint256 remainingWei = msg.value.add(participant.remainingWei);
     participant.remainingWei = 0;
