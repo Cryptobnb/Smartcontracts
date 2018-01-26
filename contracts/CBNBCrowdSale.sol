@@ -16,7 +16,6 @@ contract CBNBCrowdSale is Ownable{
   uint256 public totalTokensSold;
   address public depositWallet;
   uint256 public icoEndTime;
-  address public teamWallet;
   uint256 public tokenPrice;
   uint256 public weiRaised;
   uint256 public ethPrice;
@@ -282,9 +281,9 @@ contract CBNBCrowdSale is Ownable{
     onlyOwner
   {
 
-    bnbTeamWallet.setFreezeTime(block.number);
+    bnbTeamWallet.setFreezeTime(now);
     bnbToken.transferFrom(owner, depositWallet, calculateUnsoldICOTokens());
-    bnbToken.transferFrom(owner, teamWallet, _internalTokens);
+    bnbToken.transferFrom(owner, bnbTeamWallet, _internalTokens);
     depositWallet.transfer(this.balance);   
   }
 
