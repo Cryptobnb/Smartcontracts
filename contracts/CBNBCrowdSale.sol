@@ -13,8 +13,10 @@ contract CBNBCrowdSale is Ownable{
   uint256 constant internal ETH_DECIMALS = 10**18;
   uint8 constant internal TIER_COUNT = 5;
 
+  address public remainingTokensWallet;
   uint256 public totalTokensSold;
   address public depositWallet;
+  uint256 public teamTokens;
   uint256 public icoEndTime;
   uint256 public tokenPrice;
   uint256 public weiRaised;
@@ -80,23 +82,25 @@ contract CBNBCrowdSale is Ownable{
   /// @dev confirm price thresholds and amounts
   ///  depositWallet for holding ether
   ///  bnbToken token address pushed to mainnet first
-  function CBNBCrowdSale(address _depositWallet, address _bnbToken, address _teamWallet) 
+  function CBNBCrowdSale(address _remainingTokensWallet, address _depositWallet, address _bnbToken, address _teamWallet) 
     public 
   {
     require(_depositWallet != 0x0);
     require(_bnbToken != 0x0);
     require(_teamWallet != 0x0);     
 
+    remainingTokensWallet = _remainingTokensWallet;
     totalTokensSold;
     depositWallet = _depositWallet;
-    icoEndTime = now + 90 days; //pick a block number to end on
     bnbTeamWallet = CBNBTeamWallet(_teamWallet);
+    teamTokens = 300000000*TOKEN_DECIMALS; //verify team owner advisors token amount
     tokenPrice;
+    icoEndTime = now + 90 days; //pick a block number to end on
     weiRaised;
     bnbToken = CBNBToken(_bnbToken);    
-    minLimit = 1500 ether;
+    minLimit = 1500 ether; //verify
     owner = msg.sender;
-    cap = 15000 ether;
+    cap = 15000 ether; //verify
 
    for(uint8 i=0; i<TIER_COUNT; i++){ 
     saleTier[i].tokensToBeSold = (100000000-(i*20000000))*TOKEN_DECIMALS;
@@ -112,6 +116,17 @@ contract CBNBCrowdSale is Ownable{
     payable
   {
     require(msg.sender == owner);
+  }
+
+  function transferTeamTokens()
+    public
+    onlyOwner
+    returns(bool success)
+  {
+    bnbToken.transferFrom(owner, bnbTeamWallet, teamTokens);
+    totalTokensSold += teamTokens;
+    teamTokens = 0;
+    return(true);
   }
 
   ///@notice feels risky
@@ -178,7 +193,6 @@ contract CBNBCrowdSale is Ownable{
 
     uint256 amount = msg.value.sub(remainingWei);
     weiRaised += amount;
-    depositWallet.transfer(amount);
 
     participant.remainingWei += remainingWei;
     participant.contrAmount += amount;
@@ -272,19 +286,29 @@ contract CBNBCrowdSale is Ownable{
     return true;
   }
 
+
+  
+  ///@notice owner withdraws ether periodically from the crowdsale contract
+  function ownerWithdrawal()
+    public
+    onlyOwner
+    returns(bool success)
+  {
+    LogWithdrawal(msg.sender, this.balance);//do we really want to broadcast this
+    depositWallet.transfer(this.balance);
+    return(true); 
+  }
+
   /// @dev freeze unsold tokens for use at a later time
-  /// and transfer team, owner and other internally promised tokens
+  /// and transfer team owner and other internally promised tokens
   /// param total number of tokens being transfered to the freeze wallet
-  function finalize(uint256 _internalTokens)
+  function finalize()
     public
     icoHasEnded
     onlyOwner
   {
-
     bnbTeamWallet.setFreezeTime(now);
-    bnbToken.transferFrom(owner, depositWallet, calculateUnsoldICOTokens());
-    bnbToken.transferFrom(owner, bnbTeamWallet, _internalTokens);
-    depositWallet.transfer(this.balance);   
+    bnbToken.transferFrom(owner, remainingTokensWallet, calculateUnsoldICOTokens());   
   }
 
   /// @notice calculate unsold tokens for transfer to depositWallet to be used at a later date
