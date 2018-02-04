@@ -71,6 +71,7 @@ contract CBNBCrowdSale is Ownable{
 
   modifier icoHasEnded() {
     require(weiRaised >= cap || now > icoEndTime || calculateUnsoldICOTokens() == 0);
+    require(icoEndTime != 0);
     _;
   }
 
@@ -93,14 +94,14 @@ contract CBNBCrowdSale is Ownable{
     totalTokensSold;
     depositWallet = _depositWallet;
     bnbTeamWallet = CBNBTeamWallet(_teamWallet);
-    teamTokens = 300000000*TOKEN_DECIMALS; //verify team owner advisors token amount
+    teamTokens = 300000000*TOKEN_DECIMALS;
     tokenPrice;
-    icoEndTime = now + 90 days; 
+    icoEndTime = 0; 
     weiRaised;
     bnbToken = CBNBToken(_bnbToken);    
-    minLimit = 1500 ether; //verify
+    minLimit = 1500 ether; 
     owner = msg.sender;
-    cap = 15000 ether; //verify
+    cap = 15000 ether; 
 
    for(uint8 i=0; i<TIER_COUNT; i++){ 
     saleTier[i].tokensToBeSold = (100000000-(i*20000000))*TOKEN_DECIMALS;
@@ -145,9 +146,17 @@ contract CBNBCrowdSale is Ownable{
     tokenPrice = 40+(8*tier);
   }
 
+  function setIcoEndTime()
+    public
+    onlyOwner
+    {
+      require(icoEndTime == 0);
+      icoEndTime = now + 90 days;
+    }
+
   /// @notice buyer calls this function to order to get on the list for approval
   /// buyers must send the ethereum with their whitelist application
-   /// @notice buyer calls this function to order to get on the list for approval
+  /// @notice buyer calls this function to order to get on the list for approval
   /// buyers must send the ether with their whitelist application
   function buyTokens()
     external

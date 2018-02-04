@@ -40,7 +40,7 @@ contract CBNBToken is StandardToken, Ownable {
     public 
     returns (bool) 
     {
-        require (!paused || msg.sender == crowdsaleContract); //doesnt allow transfer until unpaused or crowdsaleContract calls it
+        require (!paused || msg.sender == crowdsaleContract || msg.sender == owner); //doesnt allow transfer until unpaused or crowdsaleContract calls it
         return super.transfer(_to, _value);
     }
 
