@@ -1,11 +1,11 @@
-pragma solidity 0.4.18;
+pragma solidity 0.4.19;
 
 import './CBNBToken.sol';
 import './CBNBTeamWallet.sol';
 import 'zeppelin-solidity/contracts/ownership/Ownable.sol';
 import 'zeppelin-solidity/contracts/math/SafeMath.sol';
 
-contract CBNBCrowdSale is Ownable{
+contract CBNBCrowdSale_v2 is Ownable{
   using SafeMath for uint256;
 
   uint256 constant internal MIN_CONTRIBUTION = 0.1 ether;
@@ -58,11 +58,7 @@ contract CBNBCrowdSale is Ownable{
   event LogTokensTransferedFrom(address _owner, address _msgsender, uint256 _qtyOfTokensRequested);
   event LogTokensReserved(address _buyer, uint256 _amount);
   event LogWithdrawal(address _investor, uint256 _amount); 
- 
-  modifier isValidPayload() {
-    require(msg.data.length == 0 || msg.data.length == 4); // double check this one
-    _;
-  }
+  event LogBalance(uint256 balance);
 
   modifier icoIsActive() {
     require(weiRaised < cap && now < icoEndTime && calculateUnsoldICOTokens() > 0);
@@ -115,7 +111,11 @@ contract CBNBCrowdSale is Ownable{
     public
     payable
   {
-    require(msg.sender == owner);
+    if(msg.sender == owner){
+      LogBalance(this.balance);
+    } else {
+      buyTokens(msg.value, msg.sender);
+    }
   }
 
   function transferTeamTokens()
@@ -149,24 +149,22 @@ contract CBNBCrowdSale is Ownable{
   /// buyers must send the ethereum with their whitelist application
    /// @notice buyer calls this function to order to get on the list for approval
   /// buyers must send the ether with their whitelist application
-  function buyTokens()
-    external
-    payable
+  function buyTokens(uint256 sentWei, address tokenBuyer)
+    internal
     icoIsActive
     unpausedContract
-    isValidPayload
     
     returns (uint8)
   {
     
-    Participant storage participant = participants[msg.sender];
+    Participant storage participant = participants[tokenBuyer];
 
-    require(msg.sender != owner);
+    require(tokenBuyer != owner);
     require(ethPrice != 0);
-    require(participant.whitelistStatus != Status.Denied);
-    require(msg.value.add(participant.remainingWei) >= MIN_CONTRIBUTION);
+    require(participant.whitelistStatus == Status.Approved);
+    require(sentWei.add(participant.remainingWei) >= MIN_CONTRIBUTION);
 
-    uint256 remainingWei = msg.value.add(participant.remainingWei);
+    uint256 remainingWei = sentWei.add(participant.remainingWei);
     participant.remainingWei = 0;
     uint256 totalTokensRequested;
     uint256 price = (ETH_DECIMALS.mul(uint256(40+(8*tier))).div(1000)).div(ethPrice);
@@ -192,36 +190,38 @@ contract CBNBCrowdSale is Ownable{
       }  
     }
 
-    uint256 amount = msg.value.sub(remainingWei);
+    uint256 amount = sentWei.sub(remainingWei);
     weiRaised += amount;
 
     participant.remainingWei += remainingWei;
     participant.contrAmount += amount;
     participant.qtyTokens += totalTokensRequested;
     totalTokensSold += totalTokensRequested;
-    LogTokensReserved(msg.sender, totalTokensRequested);
-    
+
+    LogTokensTransferedFrom(owner, tokenBuyer, totalTokensRequested);
+    bnbToken.transferFrom(owner, tokenBuyer, totalTokensRequested);
     return tier;
   }
  
  ///@notice interface for founders to whitelist participants
-  function approveAddressForWhitelist(address _address) 
+  function approveAddressForWhitelist(address[] _address) 
     public 
     onlyOwner
-    icoHasEnded 
   {
-    require(_address != address(0));
-    participants[_address].whitelistStatus = Status.Approved;
+    for(uint256 i = 0; i < _address.length; i++){
+      participants[_address[i]].whitelistStatus = Status.Approved;      
+    }
   }
 
   ///@notice interface for founders to whitelist participants
-  function denyAddressForWhitelist(address _address) 
+  function denyAddressForWhitelist(address[] _address) 
     public 
     onlyOwner
-    icoHasEnded 
   {
-    require(_address != address(0));
-    participants[_address].whitelistStatus = Status.Denied;
+    for(uint256 i = 0; i < _address.length; i++){
+      participants[_address[i]].whitelistStatus = Status.Denied;      
+    }
+
   }
 
   /// @notice used to move tokens from the later tiers into the earlier tiers
@@ -274,10 +274,7 @@ contract CBNBCrowdSale is Ownable{
     returns (bool success)
   {
     Participant storage participant = participants[msg.sender];
-    if(weiRaised >= minLimit){
-      require(participant.whitelistStatus != Status.Approved);
-    }
-
+    require(weiRaised < minLimit);
     uint256 sendValue = participant.contrAmount;
     participant.contrAmount = 0;
     participant.qtyTokens = 0;
@@ -321,21 +318,6 @@ contract CBNBCrowdSale is Ownable{
       }
     }
     return remainingTokens;
-  }
-
-  /// notice sends requested tokens to the whitelist person
-  function claimTokens() 
-    external
-    unpausedContract
-    icoHasEnded
-  {
-    Participant storage participant = participants[msg.sender];
-    require(participant.whitelistStatus == Status.Approved);
-    require(participant.qtyTokens != 0);
-    uint256 tkns = participant.qtyTokens;
-    participant.qtyTokens = 0;
-    LogTokensTransferedFrom(owner, msg.sender, tkns);
-    bnbToken.transferFrom(owner, msg.sender, tkns);
   }
 
   /// @notice no ethereum will be held in the crowdsale contract
