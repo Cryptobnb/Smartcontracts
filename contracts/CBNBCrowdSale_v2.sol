@@ -13,6 +13,7 @@ contract CBNBCrowdSale_v2 is Ownable{
   uint256 constant internal ETH_DECIMALS = 10**18;
   uint8 constant internal TIER_COUNT = 5;
 
+
   address public remainingTokensWallet;
   uint256 public totalTokensSold;
   address public depositWallet;
@@ -36,6 +37,7 @@ contract CBNBCrowdSale_v2 is Ownable{
     uint256 qtyTokens;
     Status whitelistStatus;
     uint256 remainingWei;
+    bool receivedAirdrop;
   }
 
   mapping(address => Participant) participants;
@@ -78,7 +80,7 @@ contract CBNBCrowdSale_v2 is Ownable{
   /// @dev confirm price thresholds and amounts
   ///  depositWallet for holding ether
   ///  bnbToken token address pushed to mainnet first
-  function CBNBCrowdSale(address _remainingTokensWallet, address _depositWallet, address _bnbToken, address _teamWallet) 
+  function CBNBCrowdSale_v2(address _remainingTokensWallet, address _depositWallet, address _bnbToken, address _teamWallet) 
     public 
   {
     require(_depositWallet != 0x0);
@@ -126,13 +128,12 @@ contract CBNBCrowdSale_v2 is Ownable{
     bnbToken.transferFrom(owner, bnbTeamWallet, teamTokens);
     totalTokensSold += teamTokens;
     teamTokens = 0;
-    bnbTeamWallet.setFreezeTime(now);
     return(true);
   }
 
   ///@notice feels risky
   ///param ethereum price will exclude decimals
-  function getEtherPrice(uint256 _price)
+  function setEtherPrice(uint256 _price)
     external
     onlyOwner
   {
@@ -198,7 +199,6 @@ contract CBNBCrowdSale_v2 is Ownable{
     participant.qtyTokens += totalTokensRequested;
     totalTokensSold += totalTokensRequested;
 
-    LogTokensTransferedFrom(owner, tokenBuyer, totalTokensRequested);
     bnbToken.transferFrom(owner, tokenBuyer, totalTokensRequested);
     return tier;
   }
@@ -224,6 +224,24 @@ contract CBNBCrowdSale_v2 is Ownable{
 
   }
 
+  ///@notice airdropAmount does not need decimal points put in as they are accounted for in the function
+  ///address array should only be long enough to max out the gas limit about 50 or less at a time
+  function sendAirdrop(address[] _address, uint256 airdropAmount)
+    public
+    onlyOwner
+  {
+    require(airdropAmount != 0);
+    uint256 sendAmount = airdropAmount.mul(TOKEN_DECIMALS).div(_address.length);
+
+    for(uint256 i = 0; i < _address.length; i++){
+      if(!participants[_address[i]].receivedAirdrop){
+        participants[_address[i]].receivedAirdrop = true;
+        airdropAmount.sub(sendAmount);
+        bnbToken.transferFrom(owner, _address[i], sendAmount); 
+      }
+    } 
+  }
+
   /// @notice used to move tokens from the later tiers into the earlier tiers
   /// contract must be paused to do the move
   /// param tier from later tier to subtract the tokens from
@@ -238,7 +256,6 @@ contract CBNBCrowdSale_v2 is Ownable{
     require(paused == true);
     require(_tierFrom > _tierTo);
     require(_tokens <= ((tiers.tokensToBeSold).sub(tiers.tokensSold)));
-
     tiers.tokensToBeSold.sub(_tokens);
     saleTier[_tierTo].tokensToBeSold.add(_tokens);
   }
@@ -277,7 +294,9 @@ contract CBNBCrowdSale_v2 is Ownable{
     require(weiRaised < minLimit);
     uint256 sendValue = participant.contrAmount;
     participant.contrAmount = 0;
+    uint256 sendTkns = participant.qtyTokens;
     participant.qtyTokens = 0;
+    bnbToken.transfer(owner, sendTkns);
     msg.sender.transfer(sendValue);
     LogWithdrawal(msg.sender, sendValue);
     return true;
@@ -302,7 +321,8 @@ contract CBNBCrowdSale_v2 is Ownable{
     icoHasEnded
     onlyOwner
   {
-    bnbToken.transferFrom(owner, remainingTokensWallet, calculateUnsoldICOTokens());   
+    bnbToken.transferFrom(owner, remainingTokensWallet, calculateUnsoldICOTokens());
+    bnbTeamWallet.setFreezeTime(now);   
   }
 
   /// @notice calculate unsold tokens for transfer to depositWallet to be used at a later date
