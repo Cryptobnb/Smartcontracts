@@ -236,7 +236,6 @@ contract CBNBCrowdSale_v2 is Ownable{
     for(uint256 i = 0; i < _address.length; i++){
       if(!participants[_address[i]].receivedAirdrop){
         participants[_address[i]].receivedAirdrop = true;
-        airdropAmount.sub(sendAmount);
         bnbToken.transferFrom(owner, _address[i], sendAmount); 
       }
     } 
@@ -294,9 +293,7 @@ contract CBNBCrowdSale_v2 is Ownable{
     require(weiRaised < minLimit);
     uint256 sendValue = participant.contrAmount;
     participant.contrAmount = 0;
-    uint256 sendTkns = participant.qtyTokens;
     participant.qtyTokens = 0;
-    bnbToken.transfer(owner, sendTkns);
     msg.sender.transfer(sendValue);
     LogWithdrawal(msg.sender, sendValue);
     return true;
